@@ -5,9 +5,9 @@ sideLinks.forEach(item => {
     item.addEventListener('click', () => {
         sideLinks.forEach(i => {
             i.parentElement.classList.remove('active');
-        })
+        });
         li.classList.add('active');
-    })
+    });
 });
 
 const menuBar = document.querySelector('.content nav .bx.bx-menu');
@@ -23,7 +23,7 @@ const searchForm = document.querySelector('.content nav form');
 
 searchBtn.addEventListener('click', function (e) {
     if (window.innerWidth < 576) {
-        e.preventDefault;
+        e.preventDefault();
         searchForm.classList.toggle('show');
         if (searchForm.classList.contains('show')) {
             searchBtnIcon.classList.replace('bx-search', 'bx-x');
@@ -49,32 +49,52 @@ window.addEventListener('resize', () => {
 const themeToggle = document.getElementById('theme-toggle');
 themeToggle.addEventListener('click', function () {
     document.body.classList.toggle('dark');
+    localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light'); // Salva o tema
 });
+
+// Mantém o tema ao recarregar a página ou define o padrão inicial
+window.onload = () => {
+    const savedTheme = localStorage.getItem('theme');
+
+    // Define 'dark' como padrão se não houver tema salvo
+    if (!savedTheme || savedTheme === 'dark') {
+        document.body.classList.add('dark');
+    }
+
+    exibirFiltro('home'); // Exibe a página inicial ao carregar
+};
 
 
 let currentFilter = '';
 
 function exibirFiltro(filtro) {
+    document.getElementById('filtroHome').style.display = 'none';
     document.getElementById('filtroMotoristas').style.display = 'none';
     document.getElementById('filtroPlacas').style.display = 'none';
     document.getElementById('filtroExames').style.display = 'none';
     document.getElementById('searchField').value = ''; // Limpar a barra de pesquisa ao mudar de filtro
 
-    if (filtro === 'placas') {
-        document.getElementById('filtroPlacas').style.display = 'block';
-        currentFilter = 'placas';
-        fetchPlacas('');
-    } else if (filtro === 'motoristas') {
-        document.getElementById('filtroMotoristas').style.display = 'block';
-        currentFilter = 'motoristas';
-        fetchMotoristas('');
-    } else if (filtro === 'exames') {
-        document.getElementById('filtroExames').style.display = 'block';
-        currentFilter = 'exames';
-        fetchExames('');
+    if (filtro === 'home') {
+        document.getElementById('filtroHome').style.display = 'block';
+        document.querySelector('footer').style.display = 'block'; // Exibe o rodapé apenas na Home
+    } else {
+        document.querySelector('footer').style.display = 'none'; // Esconde o rodapé fora da Home
+
+        if (filtro === 'placas') {
+            document.getElementById('filtroPlacas').style.display = 'block';
+            currentFilter = 'placas';
+            fetchPlacas('');
+        } else if (filtro === 'motoristas') {
+            document.getElementById('filtroMotoristas').style.display = 'block';
+            currentFilter = 'motoristas';
+            fetchMotoristas('');
+        } else if (filtro === 'exames') {
+            document.getElementById('filtroExames').style.display = 'block';
+            currentFilter = 'exames';
+            fetchExames(); // Inicializa os dados de exames
+        }
     }
 }
-
 
 function filtrarDados() {
     const query = document.getElementById('searchField').value.toUpperCase();
@@ -82,64 +102,79 @@ function filtrarDados() {
         fetchMotoristas(query);
     } else if (currentFilter === 'placas') {
         fetchPlacas(query);
+    } else if (currentFilter === 'exames') {
+        filtrarToxicologicos(query); // Adiciona o filtro de exames
     }
 }
 
-function filtrarPlacas() {
-    const input = document.getElementById('filtroPlaca');
-    const filtro = input.value.toUpperCase();
-    const lista = document.getElementById('listaPlacas');
-    const divs = lista.getElementsByClassName('placa-item');
+function fetchExames() {
+    const listaToxicologicos = document.getElementById('listaToxicologicos');
+    if (listaToxicologicos.children.length > 0) return; // Evita recarregar se já tiver conteúdo
+
+    fetch('info/motoristas.json')
+        .then(response => response.text())
+        .then(data => {
+            const toxicologicos = data.split(/\r?\n/);
+            listaToxicologicos.innerHTML = ''; // Limpa a lista
+            toxicologicos.forEach(nome => {
+                nome = nome.trim();
+                if (nome) {
+                    const div = document.createElement('div');
+                    div.classList.add('toxicologico-item'); // Adiciona classe correta
+                    div.innerHTML = `<span>${nome}</span>`;
+                    listaToxicologicos.appendChild(div);
+                    verificarEAdicionarLinkToxicologico(nome, div);
+                }
+            });
+        });
+}
+
+function filtrarToxicologicos(filtro) {
+    const lista = document.getElementById('listaToxicologicos');
+    const divs = lista.getElementsByClassName('toxicologico-item'); // Usa classe correta
     let itemEncontrado = false;
 
     for (let i = 0; i < divs.length; i++) {
-        let placa = divs[i].getElementsByTagName('span')[0];
-        if (placa) {
-            if (placa.innerHTML.toUpperCase().indexOf(filtro) > -1) {
+        const toxicologico = divs[i].getElementsByTagName('span')[0];
+        if (toxicologico) {
+            if (toxicologico.innerHTML.toUpperCase().indexOf(filtro) > -1) {
                 divs[i].style.display = "";
                 itemEncontrado = true;
             } else {
                 divs[i].style.display = "none";
             }
-        }       
+        }
     }
 
-    const imagemResultado = document.getElementById('resultadoImagem');
+    const imagemResultadoToxicologico = document.getElementById('resultadoImagemToxicologico');
     if (!itemEncontrado) {
-        imagemResultado.style.display = 'block';
+        imagemResultadoToxicologico.style.display = 'block';
     } else {
-        imagemResultado.style.display = 'none';
+        imagemResultadoToxicologico.style.display = 'none';
     }
 }
 
-        // Adiciona a classe 'dark' ao body para iniciar no modo dark
-        document.body.classList.add('dark');
+function verificarEAdicionarLinkToxicologico(nome, div) {
+    const extensoes = ['pdf', 'jpg', 'jpeg', 'png'];
+    const basePath = `/download/exame/${nome}.`;
 
-        // Controla qual seção está visível e exibe o rodapé apenas no "Home"
-        function exibirFiltro(secao) {
-            // Esconde todas as seções
-            document.getElementById('filtroHome').style.display = 'none';
-            document.getElementById('filtroPlacas').style.display = 'none';
-            document.getElementById('filtroMotoristas').style.display = 'none';
-            document.getElementById('filtroExames').style.display = 'none';
-
-            // Esconde o rodapé por padrão
-            document.querySelector('footer').style.display = 'none';
-
-            // Exibe a seção selecionada e o rodapé apenas na Home
-            if (secao === 'home') {
-                document.getElementById('filtroHome').style.display = 'block';
-                document.querySelector('footer').style.display = 'block';
-            } else if (secao === 'placas') {
-                document.getElementById('filtroPlacas').style.display = 'block';
-            } else if (secao === 'motoristas') {
-                document.getElementById('filtroMotoristas').style.display = 'block';
-            } else if (secao === 'exames') {
-                document.getElementById('filtroExames').style.display = 'block';
-            }
-        }
-
-        // Exibe o rodapé ao carregar a página na seção "Home"
-        window.onload = () => {
-            exibirFiltro('home');
-        };
+    extensoes.forEach(ext => {
+        fetch(basePath + ext)
+            .then(response => {
+                if (response.status === 200) {
+                    const link = document.createElement('a');
+                    link.href = basePath + ext;
+                    link.classList.add('button-visualizar');
+                    link.target = '_blank';
+                    link.textContent = 'Baixar Exame';
+                    div.appendChild(link);
+                    throw new Error('Arquivo encontrado'); // Interrompe o loop ao encontrar
+                }
+            })
+            .catch(error => {
+                if (error.message !== 'Arquivo encontrado') {
+                    console.log(error.message);
+                }
+            });
+    });
+}
